@@ -77,6 +77,8 @@ global int storage::time_end;
     throw(0xfffff);
 }
 
+;; Get Methods
+
 (slice) get_owner() method_id {
     load_data();
     return storage::owner_address;
