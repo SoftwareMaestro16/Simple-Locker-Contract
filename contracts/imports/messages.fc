@@ -1,0 +1,41 @@
+const slice penalty_address = "0QCsMm47egxSofgw5Y-l34ZeMw6vPYUUyTIjYT3HTafpmH9O"a;
+
+() msg::send_bounce(slice sender, int msg_val) impure inline {
+    var msg = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(sender) 
+        .store_coins(msg_val)
+        .store_uint(0, 107)
+    .end_cell();
+    send_raw_message(msg, 64);
+}
+
+() msg::send_unlock(slice sender) impure inline {
+    var msg = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(sender) 
+        .store_coins(0)
+        .store_uint(0, 107)
+    .end_cell();
+    send_raw_message(msg, 128 + 32);
+}
+
+() msg::send_penalty(slice sender, int balance) impure inline {
+    int penalty_share = balance / 10;
+
+    var msg = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(penalty_address) 
+        .store_coins(penalty_share)
+        .store_uint(0, 107)
+    .end_cell();
+    send_raw_message(msg, 0);
+
+    var msg2 = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(sender) 
+        .store_coins(0)
+        .store_uint(0, 107)
+    .end_cell();
+    send_raw_message(msg2, 128 + 32);
+}

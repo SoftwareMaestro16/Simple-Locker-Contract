@@ -1,0 +1,3 @@
+const op::lock_funds = 0x41c17dd4;
+const op::unlock_funds = 0x67d59817;
+const op::emergency_withdrawal = 0x79396598;

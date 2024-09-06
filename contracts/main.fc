@@ -1,0 +1,88 @@
+{-
+    @SoftwareMaestro: simple locker smart contract and its implementation.
+
+    Task: Develop a smart contract that simply lock TON:
+
+    1. Lock Funds (`op::lock_funds`): Users can lock their TON funds into the contract, which prevents them from being withdrawn or accessed until the lock is removed.
+    
+    2. Unlock Funds (`op::unlock_funds`): The contract owner can unlock previously locked funds, allowing users to withdraw or access their locked assets. Once unlocked, the funds become available for normal transactions and withdrawals, and the contract will be destroyed.
+
+    3. Emergency Withdrawal (`op::emergency_withdrawal`): In emergency situations, a user can perform an emergency withdrawal of their locked funds. A penalty (e.g. 10% of the total withdrawal amount) is applied to the withdrawn amount, which is retained by the contract.
+-}
+
+#include "imports/stdlib.fc";
+#include "imports/op.fc";
+#include "imports/messages.fc";
+
+global slice storage::owner_address;
+global int storage::time_end;
+
+() load_data() impure inline {
+    var ds = get_data().begin_parse();
+        storage::owner_address = ds~load_msg_addr();
+        storage::time_end = ds~load_uint(32);
+    ds.end_parse();
+}
+
+() save_data() impure inline {
+    set_data(
+        begin_cell()
+            .store_slice(storage::owner_address)
+            .store_uint(storage::time_end, 32)
+        .end_cell()
+    );
+}
+
+() recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
+    if (in_msg_body.slice_empty?()) {
+        return ();
+    }
+
+    slice cs = in_msg_full.begin_parse();
+    int flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
+
+    slice sender = cs~load_msg_addr();
+    int op = in_msg_body~load_uint(32);
+
+    load_data();
+
+    if (op == op::lock_funds) {
+        throw_unless(401, equal_slices(sender, storage::owner_address));
+        
+        return();
+    }
+
+    if (op == op::unlock_funds) {
+        throw_unless(401, equal_slices(sender, storage::owner_address));
+        if (now() < storage::time_end) {
+            msg::send_bounce(storage::owner_address, msg_value);
+            throw(100);
+        }
+        msg::send_unlock(storage::owner_address);
+
+        return();
+    }
+
+    if (op == op::emergency_withdrawal) {
+        throw_unless(401, equal_slices(sender, storage::owner_address));
+        int total_balance = my_balance;
+        msg::send_penalty(storage::owner_address, total_balance);
+
+        return();
+    }
+    
+    throw(0xfffff);
+}
+
+(slice) get_owner() method_id {
+    load_data();
+    return storage::owner_address;
+}
+
+(int) get_time_end() method_id {
+    load_data();
+    return storage::time_end;
+}
