@@ -3,6 +3,7 @@ import { Cell, toNano } from '@ton/core';
 import { Main } from '../wrappers/Main';
 import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
+import { timeEnd } from 'console';
 
 describe('Main', () => {
     let code: Cell;
@@ -23,7 +24,8 @@ describe('Main', () => {
         user = await blockchain.treasury('user');
 
         main = blockchain.openContract(Main.createFromConfig({
-            owner: owner.address
+            owner: owner.address,
+            timeEnd: 100n
         }, code));
 
         deployer = await blockchain.treasury('deployer');

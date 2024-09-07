@@ -2,12 +2,13 @@ import { Address, beginCell, Cell, Contract, contractAddress, ContractProvider, 
 
 export type MainConfig = {
     owner: Address;
+    timeEnd: bigint;
 };
 
 export function mainConfigToCell(config: MainConfig): Cell {
     return beginCell()
         .storeAddress(config.owner)
-        .storeUint(0, 32)    
+        .storeUint(config.timeEnd, 32)    
     .endCell();
 }
 

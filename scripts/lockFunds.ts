@@ -15,12 +15,10 @@ export async function run(provider: NetworkProvider) {
         timeEnd: BigInt(timeDontRepeatDeploy)
     }, await compile('Main')));
 
-    await main.sendDeploy(provider.sender(), toNano('0.05'));
+    await main.sendLock(provider.sender(), toNano('0.15'));
     await provider.waitForDeploy(main.address);
 
     console.log('Deploy request sent');
     console.log('Contract deployed at address:', main.address);
-
-
 
 }
