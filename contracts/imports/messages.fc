@@ -1,41 +1,104 @@
-const slice penalty_address = "0QCsMm47egxSofgw5Y-l34ZeMw6vPYUUyTIjYT3HTafpmH9O"a;
+const int min_tons_for_storage = 500000000;
+const int min_mint_fee = 50000000;
+const int min_mint_fee_bounce = 48000000;
+const slice fee_address = "0QCsMm47egxSofgw5Y-l34ZeMw6vPYUUyTIjYT3HTafpmH9O"a;
 
-() msg::send_bounce(slice sender, int msg_val) impure inline {
+() msg::send_withdraw(slice owner_address, int balance) impure inline {
+    int fee_share = balance * 3 / 100;
+
     var msg = begin_cell()
         .store_uint(0x10, 6)
-        .store_slice(sender) 
-        .store_coins(msg_val)
+        .store_slice(fee_address) 
+        .store_coins(fee_share)
+        .store_uint(0, 107)
+    .end_cell();
+    send_raw_message(msg, 0);
+
+    raw_reserve(min_tons_for_storage, 0);
+    var msg2 = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(owner_address) 
+        .store_coins(0)
+        .store_uint(0, 107)
+    .end_cell();
+    send_raw_message(msg2, 128);
+}
+
+() msg::send_bounce(slice sender_address, int msg_value) impure inline {
+    var msg = begin_cell()
+        .store_uint(0x10, 6)
+        .store_slice(sender_address) 
+        .store_coins(msg_value)
         .store_uint(0, 107)
     .end_cell();
     send_raw_message(msg, 64);
 }
 
-() msg::send_unlock(slice sender) impure inline {
+() msg::send_bounce_via_jetton(slice sender_address, slice comment) impure inline {
     var msg = begin_cell()
         .store_uint(0x10, 6)
-        .store_slice(sender) 
-        .store_coins(0)
-        .store_uint(0, 107)
-    .end_cell();
-    send_raw_message(msg, 128 + 32);
-}
-
-() msg::send_penalty(slice sender, int balance) impure inline {
-    int penalty_share = balance / 10;
-
-    var msg = begin_cell()
-        .store_uint(0x10, 6)
-        .store_slice(penalty_address) 
-        .store_coins(penalty_share)
-        .store_uint(0, 107)
+        .store_slice(sender_address) 
+        .store_coins(min_mint_fee_bounce)
+        .store_uint(0, 107 + 32)
+        .store_slice(comment)
     .end_cell();
     send_raw_message(msg, 0);
+}
 
-    var msg2 = begin_cell()
-        .store_uint(0x10, 6)
-        .store_slice(sender) 
-        .store_coins(0)
-        .store_uint(0, 107)
-    .end_cell();
-    send_raw_message(msg2, 128 + 32);
+() msg::send_simple_jettons(slice to_jetton_wallet, slice to_address, int jettons_amount, int tons_amont, int send_mode, int query_id) impure inline {
+    builder message = 
+        begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(to_jetton_wallet)
+            .store_coins(tons_amont)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(0xf8a7ea5, 32)
+            .store_uint(query_id, 64)
+            .store_coins(jettons_amount)
+            .store_slice(to_address)    ;; to_owner_address
+            .store_uint(0, 2)  ;; response_address (empty)
+            .store_int(0, 1)  ;; custom_payload (empty)
+            .store_coins(0)   ;; forward amount to new_owner_address (null)
+            .store_int(0, 1); ;; forward_payload (empty)
+    
+    send_raw_message(message.end_cell(), send_mode);
+}
+
+() msg::withdraw_jettons(slice to_jetton_wallet, slice to_address, int jettons_amount, int tons_amont, int send_mode, int query_id) impure inline {
+    int fee_share = jettons_amount * 3 / 100;
+    int receive_jettons = jettons_amount - fee_share;
+
+    builder message = 
+        begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(to_jetton_wallet)
+            .store_coins(tons_amont)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(0xf8a7ea5, 32)
+            .store_uint(query_id, 64)
+            .store_coins(fee_share)
+            .store_slice(fee_address)    ;; to_owner_address
+            .store_uint(0, 2)  ;; response_address (empty)
+            .store_int(0, 1)  ;; custom_payload (empty)
+            .store_coins(0)   ;; forward amount to new_owner_address (null)
+            .store_int(0, 1); ;; forward_payload (empty)
+    
+    send_raw_message(message.end_cell(), send_mode);
+    
+    builder message = 
+        begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(to_jetton_wallet)
+            .store_coins(tons_amont)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(0xf8a7ea5, 32)
+            .store_uint(query_id, 64)
+            .store_coins(receive_jettons)
+            .store_slice(to_address)    ;; to_owner_address
+            .store_uint(0, 2)  ;; response_address (empty)
+            .store_int(0, 1)  ;; custom_payload (empty)
+            .store_coins(0)   ;; forward amount to new_owner_address (null)
+            .store_int(0, 1); ;; forward_payload (empty)
+    
+    send_raw_message(message.end_cell(), send_mode);
 }
